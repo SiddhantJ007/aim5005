@@ -1,4 +1,4 @@
-from aim5005.features import MinMaxScaler, StandardScaler
+from aim5005.features import MinMaxScaler, StandardScaler, LabelEncoder
 import numpy as np
 import unittest
 from unittest.case import TestCase
@@ -51,6 +51,7 @@ class TestFeatures(TestCase):
         data = [[0, 0], [0, 0], [1, 1], [1, 1]]
         expected = np.array([[-1., -1.], [-1., -1.], [1., 1.], [1., 1.]])
         scaler.fit(data)
+        result = scaler.transform(data)
         assert (result == expected).all(), "Scaler transform does not return expected values. Expect {}. Got: {}".format(expected.reshape(1,-1), result.reshape(1,-1))
         
     def test_standard_scaler_single_value(self):
@@ -62,6 +63,50 @@ class TestFeatures(TestCase):
         assert (result == expected).all(), "Scaler transform does not return expected values. Expect {}. Got: {}".format(expected.reshape(1,-1), result.reshape(1,-1))
 
     # TODO: Add a test of your own below this line
-    
+
+    def test_standard_scaler_with_negative_values(self):
+        scaler = StandardScaler()
+        data = [[-10, -5], [-5, -1], [0, 0], [5, 2], [10, 7]]
+        scaler.fit(data)
+        result = scaler.transform(data)
+        expected_mean = np.mean(data, axis=0)  # [-0.2, 0.2]
+        expected_std = np.std(data, axis=0)    # [7.744, 3.365]
+        expected_result = (np.array(data) - expected_mean) / expected_std
+        assert np.allclose(result, expected_result, atol=1e-6), \
+            f"Expected {expected_result}, but got {result}"
+
+    def test_label_encoder_basic(self):
+        encoder = LabelEncoder()
+        data = ['cat', 'dog', 'dog', 'cat', 'fish']
+        encoded = encoder.fit_transform(data)
+        expected_classes = ['cat', 'dog', 'fish']
+        expected_encoding = [0, 1, 1, 0, 2]
+        assert (encoder.classes_ == expected_classes).all(), \
+            f"Expected classes: {expected_classes}, but got: {encoder.classes_}"
+        assert (encoded == expected_encoding).all(), \
+            f"Expected encoding: {expected_encoding}, but got: {encoded}"
+
+    def test_label_encoder_reverse_mapping(self):
+        encoder = LabelEncoder()
+        data = ['apple', 'banana', 'apple', 'orange', 'banana']
+        encoder.fit(data)
+        encoded = encoder.transform(data)
+        reverse_mapping = {label: idx for idx, label in enumerate(encoder.classes_)}
+        assert all(reverse_mapping[label] == encoded[idx] for idx, label in enumerate(data)), \
+            f"Mapping failed! Encoded: {encoded}, Reverse mapping: {reverse_mapping}"
+
+    def test_label_encoder_fitted(self):
+        encoder = LabelEncoder()
+        data = ['apple', 'banana', 'orange']
+        encoder.fit(data)
+        try:
+            encoder_invalid = LabelEncoder()
+            encoder_invalid.transform(['apple', 'banana'])
+            assert False, "Expected ValueError, but no error was raised."
+        except ValueError as e:
+            assert str(e) == "This LabelEncoder instance is not fitted yet. Call 'fit' with appropriate data.", \
+                f"Unexpected error message: {e}"
+
+
 if __name__ == '__main__':
     unittest.main()
